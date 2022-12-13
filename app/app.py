@@ -1,99 +1,142 @@
-import requests
+import time
+from pathlib import Path
 from bs4 import BeautifulSoup
+from selenium import webdriver
+from selenium.webdriver.common.by import By
 
 
-TARGET_URL = "https://upl.uz"
+BASE_DIR = Path(__file__).resolve().parent
+DRIVERS_PATH = BASE_DIR / "drivers"
+DRIVERS = {
+    "gecko": DRIVERS_PATH / "geckodriver.exe",
+    "chrome": DRIVERS_PATH / "chromedriver.exe"
+}
+IMAGE_WEBSITE_LINK = "https://backiee.com/"
+SEARCH_URL = "https://backiee.com/search/"
+YANDEX_URL = "https://cloud-api.yandex.net/v1/disk/resources/upload"
+
+class YandexDisk(webdriver.Chrome):
+
+    def __init__(self, driver_path: str) -> None:
+        super().__init__(executable_path=driver_path)
+        self.run()
+
+    def YandexDiskLogin(self,user_login:str, user_password:str) -> None:
+        self.get("https://passport.yandex.uz/auth/add?from=cloud&origin=disk_landing_web_"
+                 "signin_ru&retpath=https%3A%2F%2Fdisk.yandex.uz%2Fclient%2Frecent&backpath=https%3A%2F%2Fdisk.yandex.uz")
+        time.sleep(1)
+        self.find_element(
+            By.XPATH, "/html/body/div/div/div[2]/div[2]/div/div/div[2]/div[3]/"
+                      "div/div/div/div[1]/form/div[2]/div/div[2]/span/input"
+        ).send_keys(user_login)
+        time.sleep(1)
+        self.find_element(
+            By.XPATH, "/html/body/div/div/div[2]/div[2]/div/div/div[2]/div[3]/div/div/div/div[1]/form/div[4]/button"
+        ).click()
+        time.sleep(3)
+        self.find_element(
+            By.XPATH, "/html/body/div/div/div[2]/div[2]/div/div/div[2]/"
+                      "div[3]/div/div/div[1]/form/div[2]/div[1]/span/input"
+        ).send_keys(user_password)
+        self.find_element(
+            By.XPATH, "/html/body/div/div/div[2]/div[2]/div/div/div[2]/div[3]/div/div/div[1]/form/div[3]/button"
+        ).click()
+        time.sleep(90)
+        self.close_and_quit()
+
+    def PolygonLoginAndTokenTaker(self,user_login:str, user_password:str) -> str:
+        self.get("https://passport.yandex.ru/auth/add?retpath=https%3A%2F%2Fyandex.ru%2Fdev%2Fdisk%2Fpoligon%2F")
+        time.sleep(1)
+        self.find_element(
+            By.XPATH, "/html/body/div/div/div[2]/div[2]/div/div/div[2]/div[3]/"
+                      "div/div/div/div[1]/form/div[2]/div/div[2]/span/input"
+        ).send_keys(user_login)
+        time.sleep(1)
+        self.find_element(
+            By.XPATH, "/html/body/div/div/div[2]/div[2]/div/div/div[2]/div[3]/div/div/div/div[1]/form/div[4]/button"
+        ).click()
+        time.sleep(3)
+        self.find_element(
+            By.XPATH, "/html/body/div/div/div[2]/div[2]/div/div/div[2]/"
+                      "div[3]/div/div/div[1]/form/div[2]/div[1]/span/input"
+        ).send_keys(user_password)
+        time.sleep(1)
+        self.find_element(
+            By.XPATH, "/html/body/div/div/div[2]/div[2]/div/div/div[2]/div[3]/div/div/div[1]/form/div[3]/button"
+        ).click()
+        time.sleep(5)
+        token_link = self.find_element(
+            By.XPATH, "/html/body/div[3]/div/div/span/section/div[1]/div[1]/"
+                      "div/section/div/div/section/div/div/div/div[1]/div/section/"
+                      "div/div/div/div[4]/section/div/div/iframe").get_attribute('src')
+        time.sleep(5)
+        self.get(token_link)
+        time.sleep(2)
+        self.find_element(By.XPATH, "/html/body/div/section/div[1]/div/a").click()
+        time.sleep(5)
+        self.switch_to.frame(self.find_element(By.XPATH,
+            "/html/body/div[3]/div/div/span/section/div[1]/div[1]/div/section/div/div/section/"
+            "div/div/div/div[1]/div/section/div/div/div/div[4]/section/div/div/iframe"))
+        token = self.find_element(By.XPATH, "/html/body/div/section/div[1]/span/input").get_attribute('value')
+        print(f"Ваш токен получен: {token}")
+        return token
+
+    def ImageUploader(self, url: str, token: str, theme: str) -> None:
+        self.url = url
+        self.token = token
+        response = requests.post(YANDEX_URL,
+            headers={
+            "Authorization": f"OAuth {token}"},
+            params={
+            "url": f"{url}",
+            "path": f"/{theme}.jpg"})
 
 
-def get_and_convert_soup(url: str):
-    return BeautifulSoup(requests.get(url).text, "html.parser")
 
-def parse_category_page(page: BeautifulSoup) -> list:
-    news_links = page.select("#dle-content .short-story h2.sh-tit a")
-    news = []
-    for new_obj in news_links:
-        news.append({"name": new_obj.text, "link": new_obj["href"]})
-    return news
+    def ImageParser(self, photo_theme: str) -> None:
+        self.get(IMAGE_WEBSITE_LINK)
+        self.find_element(By.XPATH, "/html/body/nav/div/div/input").send_keys(photo_theme)
+        time.sleep(1)
+        self.find_element(By.XPATH, "/html/body/nav/div/div/button/i").click()
 
-def text_parser(page: BeautifulSoup)-> list:
-    new_text = page.select("#dle-content .full-story .fstory ")
-    texts = []
-    for text_obj in new_text:
-        texts.append({"text": text_obj.text})
-    return texts
+    def ConvertToSoup(self, content: str) -> BeautifulSoup:
+        return BeautifulSoup(requests.get(SEARCH_URL + content).text, "html.parser")
 
-def parse_categories(page: BeautifulSoup) -> dict:
-    category_links = enumerate(
-        page.select(" .nav-row ul li a"),
-        start=1
-    )
-    categories = {}
-    for index, category_obj in category_links:
-        categories[index] = {"name": category_obj.text, "link": category_obj["href"]}
-    return categories
+    def ImageLinkParser(self, page: BeautifulSoup):
+        self.page = page
+        links = page.select(".container-fluid .row .col-md-9 .tz-gallery .row .col-sm-4 a img")
+        links_container = []
+        for link in links:
+            link_ = link.get("data-src")
+            if link_ is not None:
+                links_container.append(link_)
+        return links_container
 
-def text_from_dict(source_dict: dict) -> str:
-    return '\n'.join(map(
-        lambda command: f"\t{command[0]}: {command[1]}",
-        source_dict.items()
-    ))
+    def close_and_quit(self) -> None:
+        self.close()
+        self.quit()
+
+    def run(self) -> None:
+        print("Браузер открыт")
+        time.sleep(1)
+        user_login = input("Приветстую пользователь\nВведите свой логин от Яндекс Диска: ")
+        user_password = input("Введите свой пароль: ")
+        token = self.PolygonLoginAndTokenTaker(user_login, user_password)
+        self.get(IMAGE_WEBSITE_LINK)
+        theme = input("Напишите тему фото которых хотите установить(на английском): ")
+        self.ImageParser(theme)
+        page = self.ConvertToSoup(theme)
+        link_container = self.ImageLinkParser(page)
+        print("Загружаю....")
+        for link in link_container:
+            self.ImageUploader(link, token, theme)
+        print("Готово!")
+        self.YandexDiskLogin(user_login, user_password)
 
 
-def validate_command(command: str, command_len: int = 1) -> bool:
-    return command.isdigit() and len(command) <= command_len
+    def __del__(self):
+        self.close_and_quit()
+        print("Браузер закрыт")
 
-
-def check_command(command_dict: dict, user_command) -> bool:
-    return command_dict.get(int(user_command), False)
-
-def run():
-    commands = {
-        1: "Главная новость дня",
-        2: "Новости дня по категориям"
-    }
-    subcommand_text = text_from_dict(commands)
-    user_command = input(f"Введите номер команды\n{subcommand_text}\nВвод: ")
-    if not validate_command(user_command):
-        print("Попробуй заново")
-        run()
-    if not check_command(commands, user_command):
-        print("Такой команды нет")
-        run()
-    user_command = int(user_command)
-    main_page = get_and_convert_soup(TARGET_URL)
-
-    if user_command == 1:
-        main_new = main_page.select("#container #mainleft .topblok .topblokl a")
-        main_new_text = text_parser(get_and_convert_soup(main_new[0].get("href")))
-        print(text_from_dict(main_new_text[0]).splitlines())
-
-    elif user_command == 2:
-        categories = parse_categories(main_page)
-        text_list = []
-        for key, category_dict in categories.items():
-            text_list.append(f'\t{key}: {category_dict["name"]}')
-        command_text = "\n".join(text_list)
-        category_id = input(f"Выберите категорию :\n{command_text}\nВвод: ")
-        if not validate_command(category_id, 2):
-            print("Попробуй заново")
-            run()
-        if not check_command(categories, category_id):
-            print("Такой категории нет")
-            run()
-        category_page = get_and_convert_soup(TARGET_URL +  categories[int(category_id)]["link"])
-        news_page = parse_category_page(category_page)
-        new_names = "\n".join(map(
-            lambda new: f"\t{new[0]}: {new[1]['name']}",
-            enumerate(news_page, start=1)
-        ))
-        new_id = input(f"Выберите новость \n{new_names}\nВвод:")
-        if not validate_command(new_id, 2):
-            print("Такой новости нет")
-            run()
-        new_id = int(new_id)
-        if new_id > len(news_page):
-            print("Такой новости нет")
-            run()
-        target_new_obj = news_page[new_id - 1]
-        new_text = text_parser(get_and_convert_soup(target_new_obj["link"]))
-        print((text_from_dict(new_text[0])).splitlines()[-1])
+if __name__=="__main__":
+    YandexDisk(str(DRIVERS["chrome"]))
