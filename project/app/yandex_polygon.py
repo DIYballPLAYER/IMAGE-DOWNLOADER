@@ -16,7 +16,14 @@ class YandexPolygon(webdriver.Chrome):
         self.find_element(
             By.XPATH, "/html/body/div/div/div[2]/div[2]/div/div/div[2]/div[3]/div/div/div/div[1]/form/div[4]/button"
         ).click()
-        time.sleep(3)
+         try:
+            error = self.find_element(By.XPATH, "/html/body/div/div/div[2]/div[2]/div/div/div[2]/div[3]"
+                                                "/div/div/div/div[1]/form/div[2]/div/div[2]/div")
+
+            print("Неверный логин")
+            return False
+        except NoSuchElementException:
+            time.sleep(3)
         self.find_element(
             By.XPATH, "/html/body/div/div/div[2]/div[2]/div/div/div[2]/"
                       "div[3]/div/div/div[1]/form/div[2]/div[1]/span/input"
@@ -25,7 +32,13 @@ class YandexPolygon(webdriver.Chrome):
         self.find_element(
             By.XPATH, "/html/body/div/div/div[2]/div[2]/div/div/div[2]/div[3]/div/div/div[1]/form/div[3]/button"
         ).click()
-        time.sleep(5)
+        try:
+            error = self.find_element(By.XPATH, "/html/body/div/div/div[2]/div[2]/div/div/div[2]/div[3]"
+                                                "/div/div/div/form/div[2]/div[1]/div")
+            print("Неверный пароль")
+            return False
+        except NoSuchElementException:
+            time.sleep(2)
 
     def token_taker(self, user_login: str, user_password: str) -> str:
         self.polygon_login(user_login, user_password)
