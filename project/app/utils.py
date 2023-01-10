@@ -30,6 +30,3 @@ def image_uploader(token: str) -> None:
                                  headers={"Authorization": f"OAuth {token}"},
                                  params={"url": f"{link}",
                                          "path": f"/{theme}.jpg"})
-        print(response.status_code)
-        print(response.url)
-
