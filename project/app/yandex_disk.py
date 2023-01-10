@@ -2,7 +2,7 @@ import time
 from selenium.webdriver.common.by import By
 
 from project.app.config import IMAGE_WEBSITE_LINK
-from project.app.utils import convert_to_soup, image_link_parser, image_uploader
+from project.app.utils import image_uploader
 from project.app.yandex_polygon import YandexPolygon
 
 
@@ -49,21 +49,15 @@ class YandexDisk(YandexPolygon):
 
     def run(self) -> None:
         print("Браузер открыт")
-        time.sleep(1)
         user_login = input("Приветстую пользователь\nВведите свой логин от Яндекс Диска: ")
         user_password = input("Введите свой пароль: ")
-        token = self.token_taker(user_login, user_password)
+        token = self.polygon_login(user_login, user_password)
         self.get(IMAGE_WEBSITE_LINK)
-        theme = input("Напишите тему фото которых хотите установить(на английском): ")
-        self.image_parser(theme)
-        page = convert_to_soup(theme)
-        link_container = image_link_parser(page)
-        print("Загружаю....")
-        for link in link_container:
-            image_uploader(link, token, theme)
-        self.yandex_disk_login(user_login, user_password)
+        image_uploader(token)
+
 
     def __del__(self):
         self.close_and_quit()
         print("Браузер закрыт")
+
 
